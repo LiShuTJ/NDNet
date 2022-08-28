@@ -51,5 +51,3 @@ class conv_bn_relu(nn.Module):
         self.__delattr__('conv')
         self.__delattr__('bn')
         self.conv = conv
-        
-        print('converted')

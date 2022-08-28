@@ -4,6 +4,7 @@
 ## NOTICE: This repo is still under construction
 - [x] Implementation of paper models
 - [x] Training code
+- [x] Speed measurement 
 - [ ] Pretrained weights on ImageNet and Cityscapes
 - [ ] TensorRT implementation
 
@@ -14,10 +15,10 @@ You can install all these by:
 pip install -r requirement.txt
 ```
 
-## Speed Test
-Cd to lis/models, run the following commond and you'll see the model statistics and the inference speed on your mechine:
+## Speed Measurement (Pytorch not TRT)
+Run the following commond and you'll see the model statistics and the inference speed on your mechine:
 ```
-python ndnet_[model].py
+python tools/speedMeasure.py --cfg experiments\cityscapes\ndnet_res18.yaml
 ```
 
 ## Training

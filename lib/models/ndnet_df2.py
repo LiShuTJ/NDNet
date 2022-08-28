@@ -240,26 +240,3 @@ class NDNet_DF2(nn.Module):
             if isinstance(m, conv_bn_relu):
                 m.convert2Inference()
 
- 
-if __name__ == '__main__':
-    model = NDNet_DF2(19).cuda().eval()
-    input = torch.randn(1, 3, 512, 1024).cuda()
-    flops, params = profile(model, inputs=(input,))
-    summary(model, torch.zeros((1, 3, 512, 1024)).cuda())
-    
-    print("GFLOPs = ", flops / 1000000000)
-    print("Params(M) = ", params / 1000000)
-    
-    model.convert2Inference()
-    
-    for i in range(10):
-        pred=model(input)
-    iters = 100
-    torch.cuda.synchronize()
-    begin = time.time()
-    for i in range(iters):
-        pred=model(input)
-    torch.cuda.synchronize()
-    end = time.time()
-    k = end-begin
-    print("Average inference time:", k/iters*1000, "ms")
