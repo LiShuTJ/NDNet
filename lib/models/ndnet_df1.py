@@ -24,7 +24,7 @@ from .utils import conv_bn_relu
 BN_MOMENTUM = 0.1
 
 
-class SToD(nn.Module):
+class NeighborDecouple(nn.Module):
 
     def __init__(self, block_size):
         super().__init__()
@@ -35,7 +35,7 @@ class SToD(nn.Module):
         return x
     
 
-class DToS(nn.Module):
+class NeighborCouple(nn.Module):
 
     def __init__(self, block_size):
         super().__init__()
@@ -59,10 +59,10 @@ class SMFE(nn.Module):
         for i in range(self.num_k):
             self.spacewiseLearning.append(conv_bn_relu(in_ch, inter, kernels[i], relu=False))
         
-        self.decouple = SToD(2)
+        self.decouple = NeighborDecouple(2)
         self.fuse = conv_bn_relu(self.num_k*inter, self.num_k*outer, 1, relu=False)
 
-        self.couple = DToS(2) if stride==1 else nn.Identity()  
+        self.couple = NeighborCouple(2) if stride==1 else nn.Identity()  
         self.downsample = None if (stride==1 and in_ch==out_ch) else conv_bn_relu(in_ch, out_ch, 1, stride=stride, relu=False)
 
     def forward(self, x):
@@ -85,7 +85,7 @@ class LCGB(nn.Module):
     def __init__(self, in_ch, out_ch):
         super().__init__()
         inner_ch = out_ch//2
-        self.down = SToD(4)
+        self.down = NeighborDecouple(4)
         self.conv = nn.Sequential(
             conv_bn_relu(16*in_ch, out_ch, 3, groups=16),
             conv_bn_relu(out_ch, out_ch, 1),
@@ -155,14 +155,14 @@ class NDNet_DF1(nn.Module):
                         )
         self.s16 = nn.Sequential(
                         conv_bn_relu(128, 128, 1),
-                        DToS(2),
+                        NeighborCouple(2),
                         )
         
         self.up32 = nn.Sequential(
                         conv_bn_relu(512, 512, 1),
-                        DToS(2),
+                        NeighborCouple(2),
                         conv_bn_relu(128, 128, 1),
-                        DToS(2),
+                        NeighborCouple(2),
                         )
         
         self.loc = nn.Sequential(

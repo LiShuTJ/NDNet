@@ -17,3 +17,5 @@ yacs
 tensorboardX
 tqdm
 ninja
+onnx
+onnxsim

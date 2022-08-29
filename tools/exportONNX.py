@@ -23,6 +23,8 @@ from config import config
 from config import update_config
 
 from ptflops import get_model_complexity_info
+import onnx
+from onnxsim import simplify
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train segmentation network')
@@ -30,6 +32,10 @@ def parse_args():
     parser.add_argument('--cfg',
                         help='experiment configure file name',
                         required=True,
+                        type=str)
+    parser.add_argument('--weights',
+                        help='pretrained weights',
+                        default='',
                         type=str)
     parser.add_argument('opts',
                         help="Modify config options using the command-line",
@@ -56,25 +62,31 @@ def main():
         (1, 3, config.TRAIN.IMAGE_SIZE[1], config.TRAIN.IMAGE_SIZE[0])
     ).cuda()
     
-    macs, params = get_model_complexity_info(model, (3, 512, 1024), as_strings=False, print_per_layer_stat=False)
+    # load weights
+    if args.weights != '':
+        pretrained_dict = torch.load(args.weights)['state_dict']
+        print("[INFO] LOADING PRETRAINED MODEL: ", path)
+        pretrained_dict = {k.replace('backbone.', ''): v for k, v in pretrained_dict.items()}
+        model_dict = model.state_dict()
+        pretrained_dict = {k: v for k, v in pretrained_dict.items()
+                            if k in model_dict.keys()}
+        for k, _ in pretrained_dict.items():
+                print('=> loading {} pretrained model {}'.format(k, args.weights))
 
-    
+        model_dict.update(pretrained_dict)
+        model.load_state_dict(model_dict)
+
+    # export onnx
     model.convert2Inference()
     model.eval()
-    for _ in range(10):
-        pred=model(dump_input)
-    iters = 100
-    torch.cuda.synchronize()
-    begin = time.time()
-    for _ in range(iters):
-        pred=model(dump_input)
-    torch.cuda.synchronize()
-    end = time.time()
-    k = end-begin
-    print('{:<30}  {:.1f} GFlops'.format('Computational complexity: ', macs/1e9))
-    print('{:<30}  {:.1f} M'.format('Number of parameters: ', params/1e6))
-    print('{:<30}  {:.2f} ms'.format('Average inference time:', k/iters*1000))
-
+    torch.onnx.export(model, dump_input, config.MODEL.NAME+".onnx",
+            opset_version=12)
+    
+    # simplify onnx
+    model = onnx.load(config.MODEL.NAME+".onnx")
+    model, check = simplify(model)
+    assert check, "Simplified ONNX model could not be validated"
+    onnx.save(model, config.MODEL.NAME+".onnx")
 
 if __name__ == '__main__':
     main()
