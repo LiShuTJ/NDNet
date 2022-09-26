@@ -8,6 +8,8 @@ Created on Wed Aug 24 15:44:56 2022
 
 import torch.nn as nn
 
+BN_MOMENTUM = 0.1
+
 def fuse_conv_bn(kernel, bn):
     gamma = bn.weight
     std = (bn.running_var + bn.eps).sqrt()
@@ -32,7 +34,7 @@ class conv_bn_relu(nn.Module):
         else:
             self.conv = nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size,
                                             stride=stride, padding=padding, dilation=dilation, groups=groups, bias=False)
-            self.bn = nn.BatchNorm2d(num_features=out_channels)
+            self.bn = nn.BatchNorm2d(num_features=out_channels, momentum=BN_MOMENTUM)
 
     def forward(self, x):
         if hasattr(self, 'bn'):

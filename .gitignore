@@ -2,3 +2,7 @@ __pycache__/
 *.onnx
 *.trt
 *.engine
+data/
+pretrained_models/
+log/
+output/

@@ -21,9 +21,6 @@ from einops import rearrange, reduce, repeat, parse_shape
 from .utils import conv_bn_relu
 
 
-BN_MOMENTUM = 0.1
-
-
 class NeighborDecouple(nn.Module):
 
     def __init__(self, block_size):
@@ -127,11 +124,11 @@ class LCGB(nn.Module):
 
 
 class NDNet_DF1(nn.Module):
-    def __init__(self, num_classes=1000, f=[64, 128, 256, 512], n=[2, 2, 2, 2]):
+    def __init__(self, num_classes=1000):
         super().__init__()
         
         self.num_classes = num_classes
-        self.s = LCGB(3, f[0])
+        self.s = LCGB(3, 64)
         self.conv3x = nn.Sequential(
             SMFE(64, 64, stride=2),
             SMFE(64, 64),
@@ -213,7 +210,7 @@ class NDNet_DF1(nn.Module):
     def init_weights(self, path):
         
         if os.path.isfile(path):
-            pretrained_dict = torch.load(path)['state_dict']
+            pretrained_dict = torch.load(path, map_location='cpu')['state_dict']
             print("[INFO] LOADING PRETRAINED MODEL: ", path)
             pretrained_dict = {k.replace('backbone.', ''): v for k, v in pretrained_dict.items()}
             model_dict = self.state_dict()

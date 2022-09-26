@@ -21,9 +21,6 @@ from einops import rearrange, reduce, repeat, parse_shape
 from .utils import conv_bn_relu
 
 
-BN_MOMENTUM = 0.1
-
-
 class NeighborDecouple(nn.Module):
 
     def __init__(self, block_size):
@@ -200,7 +197,7 @@ class NDNet_Res18(nn.Module):
     def init_weights(self, path):
         
         if os.path.isfile(path):
-            pretrained_dict = torch.load(path)['state_dict']
+            pretrained_dict = torch.load(path, map_location='cpu')['state_dict']
             print("[INFO] LOADING PRETRAINED MODEL: ", path)
             pretrained_dict = {k.replace('backbone.', ''): v for k, v in pretrained_dict.items()}
             model_dict = self.state_dict()

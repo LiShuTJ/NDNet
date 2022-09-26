@@ -134,3 +134,15 @@ def adjust_learning_rate(optimizer, base_lr, max_iters,
     lr = base_lr*((1-float(cur_iters)/max_iters)**(power))
     optimizer.param_groups[0]['lr'] = lr
     return lr
+
+
+def get_world_size():
+    if not torch.distributed.is_initialized():
+        return 1
+    return torch.distributed.get_world_size()
+
+def get_rank():
+    if not torch.distributed.is_initialized():
+        return 0
+    return torch.distributed.get_rank()
+    

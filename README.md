@@ -6,6 +6,8 @@
 - [x] Training code
 - [x] Speed measurement 
 - [ ] Pretrained weights on ImageNet and Cityscapes
+    - [x] Pretrained weights on ImageNet
+    - [ ] Pretrained weights on Cityscapes
 - [x] TensorRT implementation
 
 ## Install
@@ -20,7 +22,7 @@ For TensorRT installation, please refer to [official installation guide](https:/
 ## Speed Measurement (Pytorch not TRT)
 Run the following commond and you'll see the model statistics and the inference speed on your mechine:
 ```
-python tools/speedMeasure.py --cfg experiments\cityscapes\ndnet_res18.yaml
+python tools/speedMeasure.py --cfg experiments/cityscapes/ndnet_res18.yaml
 ```
 
 ## TensorRT Support
@@ -28,7 +30,7 @@ There are two ways to convert a trained model into trt engine.
 
 1. Export to ONNX, and run `trtexec`:
    ```
-   1. python tools/exportONNX.py --cfg experiments\cityscapes\ndnet_res18.yaml
+   1. python tools/exportONNX.py --cfg experiments/cityscapes/ndnet_res18.yaml
    2. trtexec --onnx=NDNet_Res18.onnx --saveEngine=NDNet_Res18.engine
    ```
    > Tips: Running the above may reproduce the speed result in out paper. If you want faster speed (lower precision), you may enable the `--fp16`, `--int8` or `--best` flag in the `trtexec` command.
@@ -38,10 +40,21 @@ There are two ways to convert a trained model into trt engine.
    ```
 
 ## Training
-For multi-GPU training, taking NDNet-Res18 as an example, type:
-```
-python -m torch.distributed.launch --nproc_per_node=4 tools/train.py --cfg experiments/cityscapes/ndnet_res18.yaml
-```
+1. Download the pretrained weights, and put it under `pretrained_models` (or modify the `MODEL.PRETRAINED` path in the cfg file).
+   
+   | Model | Top 1 Acc. | Link |
+   | :----: | :----:  | :----: |
+   | NDNet-DF1   | 70.86 | [model (code: l27o)](https://pan.baidu.com/s/1vvjtUmz5QcS61onunO8gqw) |
+   | NDNet-DF2   | 75.40 | TODO |
+   | NDNet-Res18 | 72.16 | [model (code: uel1)](https://pan.baidu.com/s/1DbPaxKED_S_0QnwYEec2ZA) |
+   | NDNet-Res34 | 76.97 | [model (code: 0pss)](https://pan.baidu.com/s/1h44wjl9-_oJ-9ZzHnUdMnQ ) |
+
+
+2. For multi-GPU training, taking NDNet-DF1 as an example, type:
+   ```
+   python -m torch.distributed.launch --nproc_per_node=4 tools/train.py --cfg experiments/cityscapes/ndnet_df1.yaml
+   ```
+
 
 ## Acknowledgement
 HRNet-Semantic-Segmentation <https://github.com/HRNet/HRNet-Semantic-Segmentation>

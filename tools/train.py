@@ -22,6 +22,7 @@ import torch.nn as nn
 import torch.backends.cudnn as cudnn
 import torch.optim
 from tensorboardX import SummaryWriter
+from torch.utils.data.distributed import DistributedSampler
 
 import _init_paths
 import models
@@ -40,6 +41,7 @@ def parse_args():
                         help='experiment configure file name',
                         required=True,
                         type=str)
+    parser.add_argument("--local_rank", type=int, default=0)
     parser.add_argument('opts',
                         help="Modify config options using the command-line",
                         default=None,
@@ -70,21 +72,25 @@ def main():
     cudnn.deterministic = config.CUDNN.DETERMINISTIC
     cudnn.enabled = config.CUDNN.ENABLED
     gpus = list(config.GPUS)
+    distributed = len(gpus) > 1
+    device = torch.device('cuda:{}'.format(args.local_rank))
 
     # build model
     model = eval('models.'+config.MODEL.NAME)(19)
+    model.init_weights(config.MODEL.PRETRAINED)
 
-    dump_input = torch.rand(
-        (1, 3, config.TRAIN.IMAGE_SIZE[1], config.TRAIN.IMAGE_SIZE[0])
-    )
-    logger.info(get_model_summary(model.cuda(), dump_input.cuda()))
-
-    # copy model file
-    this_dir = os.path.dirname(__file__)
-    models_dst_dir = os.path.join(final_output_dir, 'models')
-    if os.path.exists(models_dst_dir):
-        shutil.rmtree(models_dst_dir)
-    shutil.copytree(os.path.join(this_dir, '../lib/models'), models_dst_dir)
+    if distributed:
+        torch.cuda.set_device(args.local_rank)
+        torch.distributed.init_process_group(
+            backend="nccl", init_method="env://",
+        )
+    if args.local_rank == 0:
+        # copy model file
+        this_dir = os.path.dirname(__file__)
+        models_dst_dir = os.path.join(final_output_dir, 'models')
+        if os.path.exists(models_dst_dir):
+            shutil.rmtree(models_dst_dir)
+        shutil.copytree(os.path.join(this_dir, '../lib/models'), models_dst_dir)
 
     # prepare data
     crop_size = (config.TRAIN.IMAGE_SIZE[1], config.TRAIN.IMAGE_SIZE[0])
@@ -101,13 +107,19 @@ def main():
                         downsample_rate=config.TRAIN.DOWNSAMPLERATE,
                         scale_factor=config.TRAIN.SCALE_FACTOR)
 
+    if distributed:
+        train_sampler = DistributedSampler(train_dataset)
+    else:
+        train_sampler = None
+
     trainloader = torch.utils.data.DataLoader(
         train_dataset,
-        batch_size=config.TRAIN.BATCH_SIZE_PER_GPU*len(gpus),
-        shuffle=config.TRAIN.SHUFFLE,
+        batch_size=config.TRAIN.BATCH_SIZE_PER_GPU,
+        shuffle=config.TRAIN.SHUFFLE and train_sampler is None,
         num_workers=config.WORKERS,
         pin_memory=True,
-        drop_last=True)
+        drop_last=True,
+        sampler=train_sampler)
 
     if config.DATASET.EXTRA_TRAIN_SET:
         extra_train_dataset = eval('datasets.'+config.DATASET.DATASET)(
@@ -144,12 +156,18 @@ def main():
                         crop_size=test_size,
                         downsample_rate=1)
 
+    if distributed:
+        test_sampler = DistributedSampler(test_dataset)
+    else:
+        test_sampler = None
+
     testloader = torch.utils.data.DataLoader(
         test_dataset,
-        batch_size=config.TEST.BATCH_SIZE_PER_GPU*len(gpus),
+        batch_size=config.TEST.BATCH_SIZE_PER_GPU,
         shuffle=False,
         num_workers=config.WORKERS,
-        pin_memory=True)
+        pin_memory=True,
+        sampler=test_sampler)
 
     # criterion
     if config.LOSS.USE_OHEM:
@@ -162,7 +180,10 @@ def main():
                                  weight=train_dataset.class_weights)
 
     model = FullModel(model, criterion)
-    model = nn.DataParallel(model, device_ids=gpus).cuda()
+    model = model.to(device)
+    model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
+    model = nn.parallel.DistributedDataParallel(
+        model, device_ids=[args.local_rank], output_device=args.local_rank)
 
     # optimizer
     if config.TRAIN.OPTIMIZER == 'sgd':
@@ -200,42 +221,51 @@ def main():
     extra_iters = config.TRAIN.EXTRA_EPOCH * epoch_iters
     
     for epoch in range(last_epoch, end_epoch):
+        if distributed:
+            train_sampler.set_epoch(epoch)
         if epoch >= config.TRAIN.END_EPOCH:
             train(config, epoch-config.TRAIN.END_EPOCH, 
                   config.TRAIN.EXTRA_EPOCH, epoch_iters, 
                   config.TRAIN.EXTRA_LR, extra_iters, 
-                  extra_trainloader, optimizer, model, writer_dict)
+                  extra_trainloader, optimizer, model, 
+                  writer_dict, device)
         else:
             train(config, epoch, config.TRAIN.END_EPOCH, 
                   epoch_iters, config.TRAIN.LR, num_iters,
-                  trainloader, optimizer, model, writer_dict)
+                  trainloader, optimizer, model, writer_dict,
+                  device)
 
-        logger.info('=> saving checkpoint to {}'.format(
-            final_output_dir + 'checkpoint.pth.tar'))
-        torch.save({
-            'epoch': epoch+1,
-            'best_mIoU': best_mIoU,
-            'state_dict': model.module.state_dict(),
-            'optimizer': optimizer.state_dict(),
-        }, os.path.join(final_output_dir,'checkpoint.pth.tar'))
-        valid_loss, mean_IoU, IoU_array = validate(
-                        config, testloader, model, writer_dict)
-        if mean_IoU > best_mIoU:
-            best_mIoU = mean_IoU
-            torch.save(model.module.state_dict(),
-                       os.path.join(final_output_dir, 'best.pth'))
-        msg = 'Loss: {:.3f}, MeanIU: {: 4.4f}, Best_mIoU: {: 4.4f}'.format(
-                    valid_loss, mean_IoU, best_mIoU)
-        logging.info(msg)
-        logging.info(IoU_array)
+        valid = False
+        if epoch%100==0 or epoch>0.9*config.TRAIN.END_EPOCH or epoch == end_epoch - 1:
+            valid=True
+            valid_loss, mean_IoU, IoU_array = validate(config, 
+                    testloader, model, writer_dict, device)
+        if args.local_rank == 0 and valid:
+            logger.info('=> saving checkpoint to {}'.format(
+                final_output_dir + 'checkpoint.pth.tar'))
+            torch.save({
+                'epoch': epoch+1,
+                'best_mIoU': best_mIoU,
+                'state_dict': model.module.state_dict(),
+                'optimizer': optimizer.state_dict(),
+            }, os.path.join(final_output_dir,'checkpoint.pth.tar'))
+            if mean_IoU > best_mIoU:
+                best_mIoU = mean_IoU
+                torch.save(model.module.state_dict(),
+                        os.path.join(final_output_dir, 'best.pth'))
+            msg = 'Loss: {:.3f}, MeanIU: {: 4.4f}, Best_mIoU: {: 4.4f}'.format(
+                        valid_loss, mean_IoU, best_mIoU)
+            logging.info(msg)
+            logging.info(IoU_array)
 
-    torch.save(model.module.state_dict(),
-               os.path.join(final_output_dir, 'final_state.pth'))
+    if args.local_rank == 0:
+        torch.save(model.module.state_dict(),
+                os.path.join(final_output_dir, 'final_state.pth'))
 
-    writer_dict['writer'].close()
-    end = timeit.default_timer()
-    logger.info('Hours: %d' % np.int((end-start)/3600))
-    logger.info('Done')
+        writer_dict['writer'].close()
+        end = timeit.default_timer()
+        logger.info('Hours: %d' % np.int((end-start)/3600))
+        logger.info('Done')
 
 
 if __name__ == '__main__':

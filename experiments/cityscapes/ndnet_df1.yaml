@@ -18,7 +18,7 @@ MODEL:
   NAME: NDNet_DF1
   PRETRAINED: 'pretrained_models/NDNet_DF1_ImageNet.pth'
 LOSS:
-  USE_OHEM: True
+  USE_OHEM: true
   OHEMTHRES: 0.9
   OHEMKEEP: 131072
 TRAIN:
@@ -29,8 +29,8 @@ TRAIN:
   BATCH_SIZE_PER_GPU: 3
   SHUFFLE: true
   BEGIN_EPOCH: 0
-  END_EPOCH: 484
-  RESUME: true
+  END_EPOCH: 500
+  RESUME: false
   OPTIMIZER: sgd
   LR: 0.01
   WD: 0.0005
