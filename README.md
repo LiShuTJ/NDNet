@@ -45,7 +45,7 @@ There are two ways to convert a trained model into trt engine.
    | Model | Top 1 Acc. | Link |
    | :----: | :----:  | :----: |
    | NDNet-DF1   | 70.86 | [model (code: l27o)](https://pan.baidu.com/s/1vvjtUmz5QcS61onunO8gqw) |
-   | NDNet-DF2   | 75.40 | TODO |
+   | NDNet-DF2   | 75.56 | [model (code: nl59)](https://pan.baidu.com/s/1hbDVb2leNrNc7W5Jtl2edQ) |
    | NDNet-Res18 | 72.16 | [model (code: uel1)](https://pan.baidu.com/s/1DbPaxKED_S_0QnwYEec2ZA) |
    | NDNet-Res34 | 76.97 | [model (code: 0pss)](https://pan.baidu.com/s/1h44wjl9-_oJ-9ZzHnUdMnQ ) |
 
@@ -55,6 +55,19 @@ There are two ways to convert a trained model into trt engine.
    python -m torch.distributed.launch --nproc_per_node=4 tools/train.py --cfg experiments/cityscapes/ndnet_df1.yaml
    ```
 
+## Validation/Testing
+1. Train the model, or download the Cityscapes pretrained weights.
+   | Model | Test MIoU | Link |
+   | :----: | :----:  | :----: |
+   | NDNet-DF1   | 75.5 | [model (code: h8nx)](https://pan.baidu.com/s/1ihWD4l9FOXzKzrVn3DFiyg) |
+   | NDNet-DF2   | - | TODO |
+   | NDNet-Res18 | 76.5 | [model (code: f9je)](https://pan.baidu.com/s/1O-7wWbQ_4O1ZROdrULeR2A) |
+   | NDNet-Res34 | - | TODO |
+
+2. Using the `test.py` script (check the DATASET.TEST_SET path and TEST.MODEL_FILE path carefully):
+   ```
+   python tools/test.py --cfg experiments/cityscapes/ndnet_df1.yaml
+   ```
 
 ## Acknowledgement
 HRNet-Semantic-Segmentation <https://github.com/HRNet/HRNet-Semantic-Segmentation>

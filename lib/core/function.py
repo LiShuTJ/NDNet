@@ -207,7 +207,7 @@ def test(config, test_dataset, testloader, model,
                         flip=config.TEST.FLIP_TEST)
             
             if pred.size()[-2] != size[0] or pred.size()[-1] != size[1]:
-                pred = F.upsample(pred, (size[-2], size[-1]), 
+                pred = F.upsample(pred, (size[0], size[1]), 
                                    mode='bilinear')
 
             if sv_pred:
