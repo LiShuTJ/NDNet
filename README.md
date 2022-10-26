@@ -5,10 +5,11 @@
 - [x] Implementation of paper models
 - [x] Training code
 - [x] Speed measurement 
-- [ ] Pretrained weights on ImageNet and Cityscapes
+- [x] Pretrained weights on ImageNet and Cityscapes
     - [x] Pretrained weights on ImageNet
-    - [ ] Pretrained weights on Cityscapes
+    - [x] Pretrained weights on Cityscapes
 - [x] TensorRT implementation
+- [x] Prediction code
 
 ## Install
 
@@ -60,13 +61,24 @@ There are two ways to convert a trained model into trt engine.
    | Model | Test MIoU | Link |
    | :----: | :----:  | :----: |
    | NDNet-DF1   | 75.5 | [model (code: h8nx)](https://pan.baidu.com/s/1ihWD4l9FOXzKzrVn3DFiyg) |
-   | NDNet-DF2   | - | TODO |
+   | NDNet-DF2   | 77.0 | [model (code: 002a)](https://pan.baidu.com/s/1hOQecVXspbSvZIXO273SKw) |
    | NDNet-Res18 | 76.5 | [model (code: f9je)](https://pan.baidu.com/s/1O-7wWbQ_4O1ZROdrULeR2A) |
-   | NDNet-Res34 | - | TODO |
+   | NDNet-Res34 | 78.8 | [model (code: 1tsc)](https://pan.baidu.com/s/1D34hLWqJlYwemRQOfqmm6Q) |
 
 2. Using the `test.py` script (check the DATASET.TEST_SET path and TEST.MODEL_FILE path carefully):
    ```
-   python tools/test.py --cfg experiments/cityscapes/ndnet_df1.yaml
+   python tools/test.py --cfg experiments/cityscapes/ndnet_df1_test.yaml
+   ```
+
+## Predict an Image
+1. Download the Cityscapes pretrained weights.
+
+2. Using the `tools/predict.py` script (check the TEST.MODEL_FILE path carefully):
+   ```
+   python tools/predict.py --cfg experiments/cityscapes/ndnet_df1_test.yaml \
+                           --img_path images/1.png \
+                           --save_path predict.png \
+                           TEST.MODEL_FILE pretrained_models/NDNet_DF1_Cityscapes.pth
    ```
 
 ## Acknowledgement
