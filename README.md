@@ -1,5 +1,6 @@
 # NDNet
 > This is the  official implementation of "NDNet: Space-wise Multiscale Representation Learning via Neighbor Decoupling for Real-time Driving Scene Parsing" (PyTorch)
+> IEEE Transactions on Neural Networks and Learning Systems
 
 ## NOTICE: This repo is still under construction
 - [x] Implementation of paper models
@@ -80,6 +81,18 @@ There are two ways to convert a trained model into trt engine.
                            --save_path predict.png \
                            TEST.MODEL_FILE pretrained_models/NDNet_DF1_Cityscapes.pth
    ```
+
+## Citation
+If you find our work useful, please consider citing our paper:
+
+```
+@ARTICLE{li2022ndnet,
+  author={Li, Shu and Yan, Qingqing and Zhou, Xun and Wang, Deming and Liu, Chengju and Chen, Qijun},
+  journal={IEEE Transactions on Neural Networks and Learning Systems}, 
+  title={NDNet: Spacewise Multiscale Representation Learning via Neighbor Decoupling for Real-Time Driving Scene Parsing}, 
+  year={2022}
+  doi={10.1109/TNNLS.2022.3221745}}
+```
 
 ## Acknowledgement
 HRNet-Semantic-Segmentation <https://github.com/HRNet/HRNet-Semantic-Segmentation>
