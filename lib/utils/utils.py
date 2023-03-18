@@ -18,6 +18,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 
+###
+
 class FullModel(nn.Module):
   """
   Distribute the loss on multi-gpu to reduce 
